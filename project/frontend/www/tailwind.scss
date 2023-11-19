@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: #ffffff;
+}
+
+.float-label-input {
+    margin: 32px 0;     
+ }
+
+.float-label-input:focus-within label,
+  .float-label-input input:not(:placeholder-shown) + label {
+    transform-origin: left center;
+    transform: translateY(-1.5rem) scale(0.75) translateX(0.5rem);
+    background-color: white;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: #002fff;
+    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: inset 0 0 20px 20px #ffffff;
+}
+
+.md-content-area {
+    h1 {
+        @apply text-5xl font-extrabold
+    }
+
+    h2 {
+        @apply text-4xl font-extrabold
+    }
+
+    h3 {
+        @apply text-3xl font-bold
+    }
+
+    h4 {
+        @apply text-2xl font-bold
+    }
+
+    h5 {
+        @apply text-xl font-bold
+    }
+
+    h6 {
+        @apply text-lg font-bold
+    }
+}

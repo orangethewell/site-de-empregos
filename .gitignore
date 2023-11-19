@@ -1,0 +1,4 @@
+.env
+project/dist/
+github_actions
+github_actions.pub

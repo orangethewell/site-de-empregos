@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+
+    environment:
+      SECRET_KEY: /run/secrets/keyring_server
+
+    secrets:
+      - keyring_server
+  redis:
+    image: "redis:alpine"
+
+secrets:
+  keyring_server:
+    file: keyring_server.txt
