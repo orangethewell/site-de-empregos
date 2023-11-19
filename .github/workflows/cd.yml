@@ -37,12 +37,14 @@ jobs:
         run: trunk build --public-url /admin/ --dist ./project/dist/admin --release ${{github.workspace}}/project/frontend/admin/index.html
 
       - name: Exposição da chave secreta
-        run: echo ${{ secrets.SERVER_SECRET_KEY }} >> ./keyring_server.txt
+        run: echo ${{ secrets.SERVER_SECRET_KEY }} >> ./keyring_server.txt & ls .
       
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Arquivos
+        run: ls /home/runner/work/vagasemaraxa-web/vagasemaraxa-web & ls ${{github.workspace}} & ls .
       - name: Deploy do servidor
         uses: easingthemes/ssh-deploy@main
         env:
