@@ -1,4 +1,6 @@
 .env
 project/dist/
+project/keyring_server.txt
+project/frontend/target
 github_actions
 github_actions.pub
