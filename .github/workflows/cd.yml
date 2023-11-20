@@ -38,7 +38,7 @@ jobs:
         run: trunk build --public-url /admin/ --dist ./project/dist/admin --release ${{github.workspace}}/project/frontend/admin/index.html
 
       - name: Exposição da chave secreta
-        run: echo ${{ secrets.SERVER_SECRET_KEY }} >> ./keyring_server.txt & ls .
+        run: echo ${{ secrets.SERVER_SECRET_KEY }} >> ./project/keyring_server.txt & ls .
 
       - name: Deploy do servidor
         uses: easingthemes/ssh-deploy@main
@@ -49,6 +49,15 @@ jobs:
           REMOTE_HOST: ${{secrets.REMOTE_HOST}}
           REMOTE_USER: ${{secrets.REMOTE_USER}}
           TARGET: ${{secrets.REMOTE_TARGET}}
+
+      - name: Execução do Docker-compose
+        uses: alex-ac/github-action-ssh-docker-compose@master    
+        with:
+          ssh_host: ${{ secrets.REMOTE_HOST }}
+          ssh_private_key: ${{ secrets.SERVER_SECRET_KEY }}
+          ssh_user: ${{ secrets.REMOTE_USER }}
+          docker_compose_prefix: ""
+    
 
       # - name: Configuração do SSH
       #   run: |
