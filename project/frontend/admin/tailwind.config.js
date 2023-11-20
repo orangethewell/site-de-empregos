@@ -3,7 +3,7 @@ module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{rs,html}",
-    "./frontend/src/**/*.{rs,html}",
+    "./admin/src/**/*.{rs,html}",
   ],
   theme: {
     extend: {

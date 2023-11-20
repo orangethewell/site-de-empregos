@@ -5,7 +5,7 @@ on:
       - stable
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do repositório
@@ -18,7 +18,8 @@ jobs:
             ~/.cargo/bin
             ~/.cargo/git
             ~/.cargo/registry
-            target
+            project/frontend/target
+            project/dist
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
       - name: Instalação do Trunk
@@ -38,11 +39,7 @@ jobs:
 
       - name: Exposição da chave secreta
         run: echo ${{ secrets.SERVER_SECRET_KEY }} >> ./keyring_server.txt & ls .
-      
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
+
       - name: Deploy do servidor
         uses: easingthemes/ssh-deploy@main
         env:
