@@ -1,5 +1,7 @@
 services:
   web:
+    profiles:
+      - prod
     build: .
     ports:
       - "8000:5000"
@@ -7,10 +9,31 @@ services:
     environment:
       SECRET_KEY: /run/secrets/keyring_server
 
+    command: gunicorn -w 2 -b 0.0.0.0:5000 'app:create_app()'
     secrets:
       - keyring_server
+
   redis:
+    profiles:
+      - prod
+      - dev
     image: "redis:alpine"
+
+  localweb:
+    profiles:
+      - dev
+    build: .
+    command: flask run --debug
+    ports:
+      - "80:5000"
+
+    environment:
+      SECRET_KEY: /run/secrets/keyring_server
+
+    
+    secrets:
+      - keyring_server
+    
 
 secrets:
   keyring_server:
