@@ -175,11 +175,13 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "gloo 0.10.0",
  "reqwasm",
  "serde",
  "serde-wasm-bindgen 0.4.5",
  "serde_json",
  "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

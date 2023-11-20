@@ -3,6 +3,8 @@ use reqwasm::http::{Request, RequestCredentials, Method};
 use serde_wasm_bindgen::to_value;
 use serde_json::to_string as jsonify;
 use wasm_bindgen::JsValue;
+use gloo::{utils::window, console::log};
+use web_sys::Url;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Job {
@@ -15,12 +17,25 @@ pub struct Job {
     pub title: String
 }
 
-pub fn test_encoding<T: Serialize>(object: &T) -> JsValue {
-    to_value(&object).unwrap()
+pub fn get_api_url(path_bind: &str) -> String {
+    let url = Url::new(&window().location().href().unwrap()).unwrap();
+    let protocol = url.protocol();
+    let host = url.host();
+    let domains: Vec<&str> = host.split(".").collect();
+
+    log!(&format!("domínios: {:#?}", domains));
+
+    let domain = if domains[0] == "vagasemaraxa" {
+        domains[0..].join(".")
+    } else {
+        domains[1..].join(".")
+    };
+
+    format!("{}//www.{}/api/{}", protocol, domain, path_bind)
 }
 
 pub async fn add_job(new_job: &Job) -> Result<(), String> {
-    let url = "http://www.vagasemaraxa.com:5000/api/jobs/";
+    let url = get_api_url("jobs/");
     let request = Request::post(&url)
         .credentials(RequestCredentials::Include)
         .header("Content-Type", "application/json")
@@ -37,7 +52,7 @@ pub async fn add_job(new_job: &Job) -> Result<(), String> {
 
 // Função para recuperar todos os trabalhos
 pub async fn get_jobs() -> Result<Vec<Job>, String> {
-    let url = "http://www.vagasemaraxa.com:5000/api/jobs/";
+    let url = get_api_url("jobs/");
     let request = Request::get(&url);
 
     let response = request.send().await.map_err(|e| e.to_string())?;
@@ -51,7 +66,7 @@ pub async fn get_jobs() -> Result<Vec<Job>, String> {
 }
 
 pub async fn get_jobs_count() -> i32 {
-    let job_payload = Request::get("http://www.vagasemaraxa.com:5000/api/jobs/count")
+    let job_payload = Request::get(&get_api_url("jobs/count"))
         .send().await.unwrap();
 
     let data: i32 = job_payload.json().await.unwrap();
@@ -60,7 +75,7 @@ pub async fn get_jobs_count() -> i32 {
 
 // Função para atualizar um trabalho pelo ID
 pub async fn update_job(id: i32, job_details: &Job) -> Result<(), String> {
-    let url = format!("http://www.vagasemaraxa.com:5000/api/jobs/{}", id);
+    let url = get_api_url(&format!("jobs/{}", id));
     let request = Request::patch(&url)
         .header("Content-Type", "application/json")
         .credentials(RequestCredentials::Include)
@@ -77,7 +92,7 @@ pub async fn update_job(id: i32, job_details: &Job) -> Result<(), String> {
 
 // Função para excluir um trabalho pelo ID
 pub async fn delete_job(id: i32) -> Result<(), String> {
-    let url = format!("http://www.vagasemaraxa.com:5000/api/jobs/{}", id);
+    let url = get_api_url(&format!("jobs/{}", id));
     let request = Request::delete(&url).credentials(RequestCredentials::Include);
 
     let response = request.send().await.map_err(|e| e.to_string())?;
@@ -109,7 +124,7 @@ pub async fn login_user(email: String, password: String) -> Result<User, String>
         password: String
     }
     
-    let login_payload = Request::post("http://www.vagasemaraxa.com:5000/api/users/login")
+    let login_payload = Request::post(&get_api_url("users/login"))
         .body(serde_json::to_string(&LoginForm{email, password}).unwrap()) //format!("{{\"email\": \"{}\", \"password\":\"{}\"}}", email, password))
         .credentials(RequestCredentials::Include)
         .header("Content-Type", "application/json")
@@ -125,7 +140,7 @@ pub async fn login_user(email: String, password: String) -> Result<User, String>
 }
 
 pub async fn get_user_info() -> Result<User, String> {
-    let user_payload = Request::get("http://www.vagasemaraxa.com:5000/api/users/me")
+    let user_payload = Request::get(&get_api_url("users/me"))
         .credentials(RequestCredentials::Include)
         .send().await.unwrap();
 
@@ -139,7 +154,7 @@ pub async fn get_user_info() -> Result<User, String> {
 }
 
 pub async fn user_have_permission(permission_name: String) -> Result<bool, String> {
-    let user_payload = Request::get(&format!("http://www.vagasemaraxa.com:5000/api/users/have-permission/{}", permission_name))
+    let user_payload = Request::get(&get_api_url(&format!("users/have-permission/{}", permission_name)))
         .credentials(RequestCredentials::Include)
         .send().await.unwrap();
 
