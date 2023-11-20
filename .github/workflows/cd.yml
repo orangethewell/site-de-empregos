@@ -32,10 +32,12 @@ jobs:
           rustup target add wasm32-unknown-unknown
         
       - name: Compilação do WASM do subdomínio WWW
-        run: trunk build --dist ./project/dist --release ${{github.workspace}}/project/frontend/www/index.html
+        working-directory: ${{github.workspace}}/project/frontend/www
+        run: trunk build --dist .../../dist --release
       
       - name: Compilação do WASM do subdomínio ADMIN
-        run: trunk build --public-url /admin/ --dist ./project/dist/admin --release ${{github.workspace}}/project/frontend/admin/index.html
+        working-directory: ${{github.workspace}}/project/frontend/admin
+        run: trunk build --public-url /admin/ --dist ../../dist/admin --release
 
       - name: Exposição da chave secreta
         run: echo ${{ secrets.SERVER_SECRET_KEY }} >> ./project/keyring_server.txt & ls .
