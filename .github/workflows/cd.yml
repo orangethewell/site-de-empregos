@@ -33,7 +33,7 @@ jobs:
         
       - name: Compilação do WASM do subdomínio WWW
         working-directory: ${{github.workspace}}/project/frontend/www
-        run: trunk build --dist .../../dist --release
+        run: trunk build --dist ../../dist --release
       
       - name: Compilação do WASM do subdomínio ADMIN
         working-directory: ${{github.workspace}}/project/frontend/admin
