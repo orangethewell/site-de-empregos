@@ -57,7 +57,7 @@ jobs:
           ssh_private_key: ${{ secrets.SERVER_SECRET_KEY }}
           ssh_user: ${{ secrets.REMOTE_USER }}
           docker_compose_prefix: ""
-    
+          docker_compose_filename: ${{ secrets.REMOTE_TARGET }}/compose.yaml
 
       # - name: Configuração do SSH
       #   run: |
