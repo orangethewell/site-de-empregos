@@ -83,7 +83,7 @@ pub fn login() -> Html {
         <>
             <div class="flex justify-center items-center h-screen">
                 <form {onsubmit}>
-                    <div class="flex justify-center w-full"><img class="h-40 w-auto" src="assets/logo_black.png"/></div>
+                    <div class="flex justify-center w-full"><img class="h-40 w-auto" src="admin/assets/logo_black.png"/></div>
                     <TextInput id="emailInput" status={(*email_status).clone()} type_handler="text" input_ref={email_ref}>{"Endereço de E-mail"}</TextInput>
                     <TextInput id="passwordInput" status={(*password_status).clone()} type_handler="password" input_ref={password_ref}>{"Senha"}</TextInput>
                 
