@@ -6,9 +6,7 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    SERVER_NAME = "vagasemaraxa.com:8000"
     SECRET_KEY = os.environ.get('SECRET_KEY')
-    DEBUG=True
     
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI')\
         or 'sqlite:///' + os.path.join(basedir, 'app.db')
@@ -20,25 +18,37 @@ class Config:
     SESSION_USE_SIGNER = True
     SESSION_REDIS = redis.from_url("redis://127.0.0.1:6379")
     SESSION_COOKIE_SAMESITE = 'None'
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = False
 
     CACHE_TYPE = "RedisCache"
     CACHE_DEFAULT_TIMEOUT = 300
     CACHE_REDIS_URL = "redis://127.0.0.1:6379"
+
+class ProductionConfig(Config):
+    SERVER_NAME = "vagasemaraxa.com.br"
+    SESSION_COOKIE_SECURE = True
+
+class DevelopmentConfig(Config):
+    SERVER_NAME = "vagasemaraxa.com:80"
+    DEBUG=True
+
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = False
 
 from .extensions import db, bcrypt, server_session, migrate, cache
 from .models.permissions import checkin_permission
 from .models.roles import checkin_role
 from .models.users import checkin_admin_user
 
-def create_app(config_class=Config):
+def create_app(config_class=ProductionConfig()):
     app = Flask(__name__, subdomain_matching=True)
     CORS(app, 
         expose_headers=["Content-Type", "Access-Control-Allow-Credentials"],
         supports_credentials=True
     )
-    app.config.from_object(config_class)
+    if app.debug:
+        app.config.from_object(DevelopmentConfig())
+    else:
+        app.config.from_object(config_class)
     print(app.config["SERVER_NAME"])
     app.url_map.default_subdomain = "www"
 
@@ -89,3 +99,6 @@ def create_app(config_class=Config):
     app.register_blueprint(bp)
 
     return app
+
+if __name__ == "__main__":
+    create_app(DevelopmentConfig()).run(debug=True)
