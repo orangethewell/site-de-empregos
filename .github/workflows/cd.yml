@@ -52,15 +52,6 @@ jobs:
           REMOTE_USER: ${{secrets.REMOTE_USER}}
           TARGET: ${{secrets.REMOTE_TARGET}}
 
-      - name: Execução do Docker-compose
-        uses: alex-ac/github-action-ssh-docker-compose@master    
-        with:
-          ssh_host: ${{ secrets.REMOTE_HOST }}
-          ssh_private_key: ${{ secrets.SERVER_SECRET_KEY }}
-          ssh_user: ${{ secrets.REMOTE_USER }}
-          docker_compose_prefix: ""
-          docker_compose_filename: ${{ secrets.REMOTE_TARGET }}/compose.yaml
-
       # - name: Configuração do SSH
       #   run: |
       #     env
