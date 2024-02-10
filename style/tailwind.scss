@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: #ffffff;
+}
+
+@keyframes slideDown { from { max-height: 0; } to { max-height: 1000px; } }
+@keyframes slideUp { from { max-height: 1000px; } to { max-height: 0; } }
+.slideDown500 { overflow: hidden; animation: 500ms slideDown cubic-bezier(.77,0,.18,1); }
+.slideUp500 { overflow: hidden; animation: 500ms slideUp cubic-bezier(.77,0,.18,1); }
+.slideDown250 { overflow: hidden; animation: 250ms slideDown cubic-bezier(.77,0,.18,1); }
+.slideUp250 { overflow: hidden; animation: 250ms slideUp cubic-bezier(.77,0,.18,1); }
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: #002fff;
+    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: inset 0 0 20px 20px #ffffff;
+}
+
+.md-content-area {
+    h1 {
+        @apply text-5xl font-extrabold
+    }
+
+    h2 {
+        @apply text-4xl font-extrabold
+    }
+
+    h3 {
+        @apply text-3xl font-bold
+    }
+
+    h4 {
+        @apply text-2xl font-bold
+    }
+
+    h5 {
+        @apply text-xl font-bold
+    }
+
+    h6 {
+        @apply text-lg font-bold
+    }
+}
