@@ -8,10 +8,18 @@ pub mod app;
 use sea_orm::{DatabaseConnection, Database};
 
 #[cfg(feature = "ssr")]
+use lettre::{AsyncSmtpTransport, Tokio1Executor};
+
+#[cfg(feature = "ssr")]
+use handlebars::Handlebars;
+
+#[cfg(feature = "ssr")]
 #[derive(Clone)]
-pub struct AppState {
+pub struct AppState<'a> {
     pub conn: DatabaseConnection,
-    pub secret_key: String
+    pub secret_key: String,
+    pub mailer: AsyncSmtpTransport<Tokio1Executor>,
+    pub template_engine: Handlebars<'a>,
 }
 
 #[cfg(feature = "hydrate")]

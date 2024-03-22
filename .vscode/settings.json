@@ -1,8 +1,5 @@
 {
     "rust-analyzer.cargo.features": [
         "ssr"
-    ],
-    "rust-analyzer.linkedProjects": [
-        "./entities/Cargo.toml"
     ]
 }

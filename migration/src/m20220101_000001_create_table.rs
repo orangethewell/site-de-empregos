@@ -21,8 +21,8 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Job::Position).string_len(100).not_null())
                     .col(ColumnDef::new(Job::Company).string_len(100).not_null())
-                    .col(ColumnDef::new(Job::Description).string())
-                    .col(ColumnDef::new(Job::Requirements).string().not_null())
+                    .col(ColumnDef::new(Job::Description).text())
+                    .col(ColumnDef::new(Job::Requirements).array(ColumnType::Text).not_null())
                     .to_owned(),
             )
         .await

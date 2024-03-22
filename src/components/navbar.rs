@@ -17,7 +17,9 @@ pub fn NavButton<H: ToHref + 'static>(#[prop(default = false)] is_mobile: bool, 
     };
 
     view! {
-        <A href class={classes()}>{children()}</A>
+        <A href class=classes()>
+            {children()}
+        </A>
     }
 }
 
@@ -38,68 +40,99 @@ pub fn Navbar(is_logged: Resource<bool, bool>) -> impl IntoView {
                         <div class="hidden md:flex md:items-center md:space-x-1">
                             <NavButton href="/">"Início"</NavButton>
                             <NavButton href="/vagas">"Vagas"</NavButton>
-                            <Transition
-                                fallback=move || view! {
-                                }
-                            >
+                            <Transition fallback=move || {
+                                view! {}
+                            }>
+
                                 {move || {
-                                    is_logged.get()
+                                    is_logged
+                                        .get()
                                         .map(|log| match log {
-                                            true => view! {
-                                                <>
-                                                <NavButton href="/meu-perfil" class="border-l">"Meu Perfil"</NavButton>
-                                                </>
-                                            },
-                                            false => view! {
-                                                <>
-                                                <NavButton href="/login" class="border-l">"Login"</NavButton>
-                                                <NavButton href="/cadastrar">"Cadastrar"</NavButton>
-                                                </>
+                                            true => {
+                                                view! {
+                                                    <>
+                                                        <NavButton href="/perfil" class="border-l">
+                                                            "Meu Perfil"
+                                                        </NavButton>
+                                                    </>
+                                                }
+                                            }
+                                            false => {
+                                                view! {
+                                                    <>
+                                                        <NavButton href="/login" class="border-l">
+                                                            "Login"
+                                                        </NavButton>
+                                                        // <NavButton href="/cadastrar">"Cadastrar"</NavButton>
+                                                    </>
+                                                }
                                             }
                                         })
                                 }}
+
                             </Transition>
                         </div>
                     </div>
                 </div>
             </div>
-            <button class="md:hidden w-full block py-4 px-4 text-sm transition easy-in-out hover:bg-red-300" on:click={move |_| set_menu_open(!menu_open())}>Menu</button>
+            <button
+                class="md:hidden w-full block py-4 px-4 text-sm transition easy-in-out hover:bg-red-300"
+                on:click=move |_| set_menu_open(!menu_open())
+            >
+                Menu
+            </button>
             {move || match menu_open() {
                 true => {
                     view! {
                         <div class="md:hidden transition-all bg-[#cf1f1f]">
-                            <NavButton href="/" is_mobile={true}>"Início"</NavButton>
-                            <NavButton href="/vagas" is_mobile={true}>"Vagas"</NavButton>
-                            <Transition
-                                fallback=move || view! {
-                                    <NavButton href="/login" class="border-l">"Login"</NavButton>
-                                    <NavButton href="/cadastrar">"Cadastrar"</NavButton>
-                                }
-                            >
+                            <NavButton href="/" is_mobile=true>
+                                "Início"
+                            </NavButton>
+                            <NavButton href="/vagas" is_mobile=true>
+                                "Vagas"
+                            </NavButton>
+                            <Transition>
                                 {move || {
-                                    is_logged.get()
+                                    is_logged
+                                        .get()
                                         .map(|log| match log {
-                                            true => view! {
-                                                <>
-                                                <NavButton href="/meu-perfil" is_mobile={true} class="border-t">"Meu Perfil"</NavButton>
-                                                </>
-                                            },
-                                            false => view! {
-                                                <>
-                                                <NavButton href="/loginer" is_mobile={true} class="border-t">"Login"</NavButton>
-                                                <NavButton href="/cadastrar" is_mobile={true}>"Cadastrar"</NavButton>
-                                                </>
+                                            true => {
+                                                view! {
+                                                    <>
+                                                        <NavButton
+                                                            href="/perfil"
+                                                            is_mobile=true
+                                                            class="border-t"
+                                                        >
+                                                            "Meu Perfil"
+                                                        </NavButton>
+                                                    </>
+                                                }
+                                            }
+                                            false => {
+                                                view! {
+                                                    <>
+                                                        <NavButton href="/login" is_mobile=true class="border-t">
+                                                            "Login"
+                                                        </NavButton>
+                                                        // <NavButton href="/cadastrar" is_mobile=true>
+                                                        //     "Cadastrar"
+                                                        // </NavButton>
+                                                    </>
+                                                }
                                             }
                                         })
                                 }}
+
                             </Transition>
                         </div>
                     }
                 }
                 false => {
-                    view! {<div></div>}
+                    view! { <div></div> }
                 }
             }}
+
         </nav>
     }
 }

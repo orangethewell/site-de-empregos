@@ -8,6 +8,7 @@ mod m20240201_205352_seed_permissions;
 mod m20240201_215115_seed_admin_role;
 mod m20240206_122941_add_security_columns_to_user;
 mod m20240206_131940_create_membership_table;
+mod m20240223_172837_create_confirmation_table;
 
 pub struct Migrator;
 
@@ -23,6 +24,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240201_215115_seed_admin_role::Migration),
             Box::new(m20240206_122941_add_security_columns_to_user::Migration),
             Box::new(m20240206_131940_create_membership_table::Migration),
+            Box::new(m20240223_172837_create_confirmation_table::Migration),
         ]
     }
 }

@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod confirmation_request;
 pub mod job;
 pub mod membership;
 pub mod permission;

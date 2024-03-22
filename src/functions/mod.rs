@@ -3,13 +3,18 @@ use leptos::*;
 #[cfg(feature = "ssr")]
 use leptos_actix::extract;
 #[cfg(feature = "ssr")]
+use lettre::AsyncTransport;
+#[cfg(feature = "ssr")]
 use sea_orm::*;
+
+#[cfg(feature = "ssr")]
+pub mod embed;
 
 #[cfg(feature = "ssr")]
 use entities;
 
 use serde::{Deserialize, Serialize};
-use chrono::prelude::*;
+use chrono::{prelude::*, Days};
 use wasm_bindgen::UnwrapThrowExt;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -24,7 +29,8 @@ pub struct JobPaginatorInfo {
 pub struct GenericTDModel {
     pub id: i32,
     pub name: String,
-    pub description: Option<String>
+    pub description: Option<String>,
+    pub children: Vec<GenericTDModel>
 }
 
 pub type PermissionModel = GenericTDModel;
@@ -36,7 +42,8 @@ impl From<entities::role::Model> for RoleModel {
         Self {
             id: value.id,
             name: value.name,
-            description: value.description
+            description: value.description,
+            children: vec![]
         }
     }
 }
@@ -47,7 +54,8 @@ impl From<entities::permission::Model> for PermissionModel {
         Self {
             id: value.id,
             name: value.name,
-            description: value.description
+            description: value.description,
+            children: vec![]
         }
     }
 }
@@ -66,19 +74,21 @@ pub struct JobModel {
     pub position: String,
     pub company: String,
     pub description: Option<String>,
-    pub requirements: String,
+    pub requirements: Vec<String>,
     pub published_at: DateTime<FixedOffset>,
+    pub updated_at: DateTime<FixedOffset>
 }
 
 impl JobModel {
-    pub fn new(position: String, company: String, description: Option<String>, requirements: String) -> Self {
+    pub fn new(position: String, company: String, description: Option<String>, requirements: Vec<String>) -> Self {
         Self {
             id: -1,
             position,
             company,
             description,
             requirements,
-            published_at: Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone"))
+            published_at: Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone")),
+            updated_at: Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone"))
         }
     }
 }
@@ -132,9 +142,16 @@ impl From<entities::job::Model> for JobModel {
             company: value.company,
             description: value.description,
             requirements: value.requirements,
-            published_at: value.published_at
+            published_at: value.published_at,
+            updated_at: value.updated_at
         }
     }
+}
+
+#[server(GeneratePaymentUrl, "/api")]
+pub async fn generate_payment_url() -> Result<String, ServerFnError> {
+    use embed::generate_payment_url;
+    Ok(generate_payment_url())
 }
 
 #[server(UserHavePermission, "/api")]
@@ -147,7 +164,7 @@ pub async fn user_have_permission(user_id: i32, permission_name: String) -> Resu
     use entities::{user_roles, role_permissions, permission};
     use entities::prelude::{UserRoles, RolePermissions, Permission};
 
-    let app_state = extract!(web::Data<AppState>);
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
     let user_roles: Vec<user_roles::Model> = UserRoles::find()
         .filter(user_roles::Column::UserId.eq(user_id))
         .all(&app_state.conn)
@@ -164,7 +181,7 @@ pub async fn user_have_permission(user_id: i32, permission_name: String) -> Resu
         }
     }
 
-    return Ok(false)
+    Ok(false)
 }
 
 #[server(GetJobsPaginated, "/api")]
@@ -175,7 +192,7 @@ pub async fn get_jobs_paginated(page: u64) -> Result<JobPaginatorInfo, ServerFnE
     use entities::job;
     use entities::prelude::Job;
 
-    let app_state = extract!(web::Data<AppState>);
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
     let jobs_page = Job::find().order_by_desc(job::Column::PublishedAt).paginate(&app_state.conn, 25);
 
     let mut jobs_list = Vec::<JobModel>::new();
@@ -190,6 +207,22 @@ pub async fn get_jobs_paginated(page: u64) -> Result<JobPaginatorInfo, ServerFnE
     Ok(paginator_info)
 }
 
+#[server(GetJob, "/api")]
+pub async fn get_job(id: i32) -> Result<JobModel, ServerFnError> {
+    use actix_web::web;
+    use crate::AppState;
+
+    use entities::job;
+    use entities::prelude::Job;
+
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+    let job: Option<job::Model> = Job::find().filter(job::Column::Id.eq(id)).one(&state.conn).await.unwrap();
+    match job {
+        Some(job) => Ok(job.into()),
+        None => Err(ServerFnError::new("Essa vaga não foi encontrada."))
+    }
+}
+
 #[server(GetJobs, "/api")]
 pub async fn get_jobs() -> Result<Vec<JobModel>, ServerFnError> {
     use actix_web::web;
@@ -198,8 +231,8 @@ pub async fn get_jobs() -> Result<Vec<JobModel>, ServerFnError> {
     use entities::job;
     use entities::prelude::Job;
 
-    let app_state = extract!(web::Data<AppState>);
-    let jobs: Vec<job::Model> = Job::find().all(&app_state.conn).await.unwrap_or(Vec::new());
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
+    let jobs: Vec<job::Model> = Job::find().order_by_desc(job::Column::UpdatedAt).all(&app_state.conn).await.unwrap_or(Vec::new());
 
     let mut jobs_list = Vec::<JobModel>::new();
     jobs_list.extend(jobs.into_iter().map(Into::into));
@@ -220,7 +253,7 @@ pub async fn create_user(new_user: UserModel) -> Result<UserModel, ServerFnError
         Argon2
     };
 
-    let state = extract!(web::Data<AppState>);
+    let state = extract::<web::Data<AppState>>().await.unwrap();
     let secret = state.secret_key.clone().into_bytes();
 
     let salt = SaltString::generate(&mut OsRng);
@@ -237,7 +270,7 @@ pub async fn create_user(new_user: UserModel) -> Result<UserModel, ServerFnError
 
     use entities::user;
 
-    let app_state = extract!(web::Data<AppState>);
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
     let new_user = user::ActiveModel {
         username: Set(new_user.username),
         email: Set(new_user.email),
@@ -260,7 +293,7 @@ pub async fn get_roles() -> Result<Vec<RoleModel>, ServerFnError> {
     use entities::role;
     use entities::prelude::Role;
 
-    let app_state = extract!(web::Data<AppState>);
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
     let roles: Vec<role::Model> = Role::find().all(&app_state.conn).await.unwrap_or(Vec::new());
 
     let mut roles_list = Vec::<RoleModel>::new();
@@ -269,18 +302,16 @@ pub async fn get_roles() -> Result<Vec<RoleModel>, ServerFnError> {
 }
 
 #[server(UnsignRoleToUser)]
-pub async fn unsign_role_from_user(role_id: i32, user_id: i32) -> Result<Result<(), String>, ServerFnError> {
+pub async fn unsign_role_from_user(role_id: i32, user_id: i32) -> Result<(), ServerFnError> {
     use actix_web::web;
     use actix_identity::Identity;
     use crate::AppState;
 
-    use sea_orm::{Set, ActiveModelTrait};
-
     use entities::user_roles;
     use entities::prelude::UserRoles;
 
-    let app_state = extract!(web::Data<AppState>);
-    let identity = extract!(Option<Identity>);
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
+    let identity = extract::<Option<Identity>>().await.unwrap();
     if let Some(user) = identity {
         if user_have_permission(user.id().unwrap().parse::<i32>().unwrap(), "GerenciarCargos".to_owned()).await.unwrap() {
             if let Ok(Some(role_assignment)) = UserRoles::find()
@@ -289,21 +320,21 @@ pub async fn unsign_role_from_user(role_id: i32, user_id: i32) -> Result<Result<
                 .one(&app_state.conn)
                 .await {
                     role_assignment.delete(&app_state.conn).await;
-                    return Ok(Ok(()))
+                    return Ok(())
                 }
             else {
-                return Ok(Err("Banco de dados não encontrou essa relação.".to_owned()))
+                return Err(ServerFnError::new("Banco de dados não encontrou essa relação."))
             }
         }
         
-        return Ok(Err("Usuário não tem permissão para realizar essa ação.".to_owned()))
+        return Err(ServerFnError::new("Usuário não tem permissão para realizar essa ação."))
     }
 
-    Ok(Err("Usuário não está conectado na sessão.".to_owned()))
+    Err(ServerFnError::new("Usuário não está conectado na sessão."))
 }
 
 #[server(AssignRoleToUser)]
-pub async fn assign_role_to_user(role_id: i32, user_id: i32) -> Result<Result<(), String>, ServerFnError> {
+pub async fn assign_role_to_user(role_id: i32, user_id: i32) -> Result<(), ServerFnError> {
     use actix_web::web;
     use actix_identity::Identity;
     use crate::AppState;
@@ -311,10 +342,9 @@ pub async fn assign_role_to_user(role_id: i32, user_id: i32) -> Result<Result<()
     use sea_orm::{Set, ActiveModelTrait};
 
     use entities::user_roles;
-    use entities::prelude::UserRoles;
 
-    let app_state = extract!(web::Data<AppState>);
-    let identity = extract!(Option<Identity>);;
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
+    let identity = extract::<Option<Identity>>().await.unwrap();
     if let Some(user) = identity {
         if user_have_permission(user.id().unwrap().parse::<i32>().unwrap(), "GerenciarCargos".to_owned()).await.unwrap() {
             let new_role_assignment = user_roles::ActiveModel {
@@ -323,20 +353,20 @@ pub async fn assign_role_to_user(role_id: i32, user_id: i32) -> Result<Result<()
                 ..Default::default()
             };
             new_role_assignment.insert(&app_state.conn).await;
-            return Ok(Ok(()))
+            return Ok(())
         }
         
-        return Ok(Err("Usuário não tem permissão para realizar essa ação.".to_owned()))
+        return Err(ServerFnError::new("Usuário não tem permissão para realizar essa ação."))
     }
 
-    Ok(Err("Usuário não está conectado na sessão.".to_owned()))
+    Err(ServerFnError::new("Usuário não está conectado na sessão."))
 }
 
 #[server(IsUserLoggedIn, "/api")]
 pub async fn is_user_logged_in() -> Result<bool, ServerFnError> {
     use actix_identity::Identity;
 
-    let identity = extract!(Option<Identity>);;
+    let identity = extract::<Option<Identity>>().await.unwrap();
     if let Some(_user) = identity {
         return Ok(true)
     } else {
@@ -349,10 +379,10 @@ pub async fn get_user_roles(id: i32) -> Result<Vec<RoleModel>, ServerFnError> {
     use actix_web::web;
     use crate::AppState;
 
-    use entities::{role, user_roles};
-    use entities::prelude::{Role, UserRoles};
+    use entities::{role, user_roles, role_permissions};
+    use entities::prelude::{Role, UserRoles, RolePermissions, Permission};
 
-    let state = extract!(web::Data<AppState>);
+    let state = extract::<web::Data<AppState>>().await.unwrap();
 
     let roles: Vec<user_roles::Model> = UserRoles::find()
         .filter(user_roles::Column::UserId.eq(id))
@@ -363,18 +393,178 @@ pub async fn get_user_roles(id: i32) -> Result<Vec<RoleModel>, ServerFnError> {
     let mut user_roles = vec![];
 
     for role in roles.iter() {
-        let role = RoleModel::from(
+        let mut role = RoleModel::from(
             Role::find_by_id(role.role_id).one(&state.conn).await.unwrap().unwrap()
         );
 
+        let mut permissions = vec![];
+
+        for role_permission in RolePermissions::find()
+            .filter(role_permissions::Column::RoleId.eq(role.id))
+            .all(&state.conn)
+            .await.unwrap_or(Vec::new()).iter() {
+                if let Some(perm) = Permission::find_by_id(role_permission.permission_id).one(&state.conn).await.unwrap() {
+                    permissions.push(PermissionModel::from(perm))
+                }
+        }
+        role.children = permissions;
         user_roles.push(role)
     }
 
     Ok(user_roles)
 }
 
-#[server(GetLoggedUser, "/api")]
-pub async fn get_logged_user() -> Result<Result<UserModel, String>, ServerFnError> {
+#[server(ConfirmEmailChanges, "/api")]
+pub async fn confirm_email_changes(code: String) -> Result<(), ServerFnError> {
+    use actix_web::web;
+    use actix_identity::Identity;
+    use serde_json::json;
+
+    use entities::{user, confirmation_request};
+    use entities::prelude::{User, ConfirmationRequest};
+
+    use lettre::message::{header::ContentType, MultiPart, SinglePart};
+    use lettre::{Message, Address};
+
+    use std::env;
+
+    use crate::AppState;
+
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+    let request = ConfirmationRequest::find()
+        .filter(confirmation_request::Column::ConfirmCode.eq(code))
+        .one(&state.conn)
+        .await
+        .unwrap();
+
+    match request {
+        Some(request) => {
+            let now = Utc::now();
+
+            let response = if request.expires_at < now {
+                Err(ServerFnError::new("Essa requisição expirou."))
+            } else {
+                let user = request.find_related(User).one(&state.conn).await.unwrap().unwrap();
+                let mut user: user::ActiveModel = user.into();
+                user.updated_at = Set(chrono::Utc::now().with_timezone(&chrono::FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone")));
+                user.is_confirmed = Set(true);
+                user.update(&state.conn).await;
+                Ok(())
+            };
+
+            let mut request: confirmation_request::ActiveModel = request.into();
+            request.delete(&state.conn).await;
+            response
+        },
+
+        None => {
+            Err(ServerFnError::new("Essa requisição é inválida pois não existem registros."))
+        }
+    }
+}
+
+#[server(ChangeEmail, "/api")]
+pub async fn change_email(new_email: String) -> Result<UserModel, ServerFnError> {
+    use actix_web::web;
+    use actix_identity::Identity;
+    use serde_json::json;
+
+    use entities::{user, confirmation_request};
+    use entities::prelude::{User, ConfirmationRequest};
+
+    use rand::distributions::Alphanumeric;
+    use rand::{thread_rng, Rng};
+
+    use lettre::message::{header::ContentType, MultiPart, SinglePart};
+    use lettre::{Message, Address};
+
+    use std::env;
+
+    use crate::AppState;
+
+    let identity = extract::<Option<Identity>>().await.unwrap();
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+
+    if let Some(user) = identity {
+        println!("User logged in.");
+        let mut user: user::ActiveModel = 
+            User::find()
+            .filter(
+                user::Column::Id.eq(
+                    user
+                        .id()
+                        .unwrap()
+                        .parse::<i32>()
+                        .unwrap()
+                )
+            )
+            .one(&state.conn)
+            .await
+            .unwrap()
+            .unwrap()
+            .into();
+        
+        let gen_confirmation_code = move |length| -> String {
+            thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(length)
+                .map(char::from)
+                .collect()
+        };
+
+        println!("Generating confirm code...");
+        let mut confirmation_code = gen_confirmation_code(24);
+
+        let unique_code = loop {
+            if let Some(request) = ConfirmationRequest::find().filter(confirmation_request::Column::ConfirmCode.eq(&confirmation_code)).one(&state.conn).await.unwrap() {
+                confirmation_code = gen_confirmation_code(24);
+            } else {
+                break confirmation_code
+            }
+        };
+
+        let confirm_url = format!("http://localhost:3000/perfil/confirmar-email?code={}", unique_code.clone());
+
+        let confirmation_email = Message::builder()
+            .from(env::var("SMTP_MAIL").unwrap().parse::<Address>().unwrap().into())
+            .to(new_email.parse::<Address>().unwrap().into())
+            .subject("Verificação do e-mail")
+            .multipart(
+                MultiPart::alternative_plain_html(
+                    format!("Link para confirmar seu novo e-mail: {}", confirm_url),
+                    state.template_engine.render("tpl-confirm_mail", &json!({"first_name": user.username.clone().unwrap(), "url":confirm_url})).unwrap()
+                )
+            )
+            .unwrap();
+        match state.mailer.send(confirmation_email).await {
+            Ok(res) => {
+                let request: confirmation_request::ActiveModel = confirmation_request::ActiveModel { 
+                    user_id: user.id.clone(), 
+                    confirm_code: Set(unique_code.clone()), 
+                    expires_at: Set(chrono::Utc::now().with_timezone(&chrono::FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone")).checked_add_days(Days::new(1)).unwrap()),
+                    ..Default::default()
+                };
+                user.email = Set(new_email);
+                user.is_confirmed = Set(false);
+
+                let request = request.insert(&state.conn).await.unwrap();
+                let user = user.update(&state.conn).await.unwrap();
+                Ok(user.into())
+            },
+            Err(e) => {
+                Err(ServerFnError::new(format!("Houve um erro ao validar o e-mail: {e:?}")))
+            }
+        }
+        
+        
+        
+    } else {
+        Err(ServerFnError::new("Nenhum usuário está conectado nessa sessão."))
+    }
+}
+
+#[server(ChangeUsername, "/api")]
+pub async fn change_username(new_name: String) -> Result<UserModel, ServerFnError> {
     use actix_web::web;
     use actix_identity::Identity;
 
@@ -383,8 +573,47 @@ pub async fn get_logged_user() -> Result<Result<UserModel, String>, ServerFnErro
 
     use crate::AppState;
 
-    let identity = extract!(Option<Identity>);;
-    let state = extract!(web::Data<AppState>);
+    let identity = extract::<Option<Identity>>().await.unwrap();
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+
+    if let Some(user) = identity {
+        let mut user: user::ActiveModel = 
+            User::find()
+            .filter(
+                user::Column::Id.eq(
+                    user
+                        .id()
+                        .unwrap()
+                        .parse::<i32>()
+                        .unwrap()
+                )
+            )
+            .one(&state.conn)
+            .await
+            .unwrap()
+            .unwrap()
+            .into();
+        
+        user.username = Set(new_name);
+        let user = user.update(&state.conn).await.unwrap();
+        Ok(user.into())
+    } else {
+        Err(ServerFnError::new("Nenhum usuário está conectado nessa sessão."))
+    }
+}
+
+#[server(GetLoggedUser, "/api")]
+pub async fn get_logged_user() -> Result<UserModel, ServerFnError> {
+    use actix_web::web;
+    use actix_identity::Identity;
+
+    use entities::user;
+    use entities::prelude::User;
+
+    use crate::AppState;
+
+    let identity = extract::<Option<Identity>>().await.unwrap();
+    let state = extract::<web::Data<AppState>>().await.unwrap();
 
     if let Some(user) = identity {
         let mut user = UserModel::from(
@@ -404,14 +633,14 @@ pub async fn get_logged_user() -> Result<Result<UserModel, String>, ServerFnErro
             .unwrap()
         );
         user.password = "".to_owned();
-        return Ok(Ok(user))
+        Ok(user)
     } else {
-        return Ok(Err("Nenhum usuário está conectado nessa sessão.".to_owned()))
+        Err(ServerFnError::new("Nenhum usuário está conectado nessa sessão."))
     }
 }
 
 #[server(LoginUser, "/api")]
-pub async fn login_user(email: String, password: String) -> Result<Result<(), String>, ServerFnError> {
+pub async fn login_user(email: String, password: String) -> Result<(), ServerFnError> {
     use actix_web::{web, HttpRequest, HttpMessage};
     use actix_identity::Identity;
     use crate::AppState;
@@ -427,8 +656,8 @@ pub async fn login_user(email: String, password: String) -> Result<Result<(), St
     use entities::user;
     use entities::prelude::User;
 
-    let state = extract!(web::Data<AppState>);
-    let request = extract!(HttpRequest);
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+    let request = extract::<HttpRequest>().await.unwrap();
 
     if let Ok(Some(logged_user)) = User::find()
         .filter(user::Column::Email.eq(email))
@@ -443,17 +672,17 @@ pub async fn login_user(email: String, password: String) -> Result<Result<(), St
                     argon2::Params::default())
                 .unwrap().verify_password(password.into_bytes().as_slice(), &password_hashed) {
                 let _ = Identity::login(&request.extensions(), logged_user.id.to_string());
-                leptos_actix::redirect("/meu-perfil");
-                return Ok(Ok(()))
+                leptos_actix::redirect("/perfil");
+                return Ok(())
             }
-            return Ok(Err("Dados do usuário estão incorretos.".to_owned()))
+            return Err(ServerFnError::new("Dados do usuário estão incorretos."))
         }
 
-    Ok(Err("Essa conta não existe!".to_owned()))
+    Err(ServerFnError::new("Essa conta não existe!"))
 }
 
 #[server(GetMembershipDetails, "/api")]
-pub async fn get_membership_details() -> Result<Result<MembershipModel, String>, ServerFnError> {
+pub async fn get_membership_details(id: i32) -> Result<Option<MembershipModel>, ServerFnError> {
     use actix_web::web;
     use actix_identity::Identity;
     use crate::AppState;
@@ -461,29 +690,151 @@ pub async fn get_membership_details() -> Result<Result<MembershipModel, String>,
     use entities::membership;
     use entities::prelude::Membership;
 
-    let state = extract!(web::Data<AppState>);
-    let identity = extract!(Option<Identity>);
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+
+    let membership_details = Membership::find()
+        .filter(membership::Column::UserId.eq(id))
+        .one(&state.conn)
+        .await
+        .unwrap();
+
+    match membership_details {
+        Some(membership) => Ok(Some(MembershipModel::from(membership))),
+        None => Ok(None)
+    }
+}
+
+#[server(EditPassword, "/api")]
+pub async fn edit_password(new_password: String) -> Result<(), ServerFnError> {
+    use actix_web::web;
+    use actix_identity::Identity;
+
+    use entities::user;
+    use entities::prelude::User;
+
+    use crate::AppState;
+
+    let identity = extract::<Option<Identity>>().await.unwrap();
+    
+    use argon2::{
+        password_hash::{
+            rand_core::OsRng,
+            PasswordHasher, 
+            SaltString
+        },
+        Argon2
+    };
+
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+    let secret = state.secret_key.clone().into_bytes();
+
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::new_with_secret(
+        secret.as_slice(), 
+        argon2::Algorithm::default(), 
+        argon2::Version::default(), 
+        argon2::Params::default())
+    .unwrap();
+   
+    let password_hash = argon2.hash_password(new_password.into_bytes().as_slice(), &salt).unwrap().to_string();
 
     if let Some(user) = identity {
-        let user_id = user.id().unwrap().parse::<i32>().unwrap();
-        let membership_details = Membership::find()
-            .filter(membership::Column::UserId.eq(user_id))
+        let mut user: user::ActiveModel = 
+            User::find()
+            .filter(
+                user::Column::Id.eq(
+                    user
+                        .id()
+                        .unwrap()
+                        .parse::<i32>()
+                        .unwrap()
+                )
+            )
             .one(&state.conn)
             .await
-            .unwrap();
-
-        match membership_details {
-            Some(membership) => Ok(Ok(MembershipModel::from(membership))),
-            None => Ok(Err("Esse usuário não possui nenhuma inscrição.".to_owned()))
-        }
+            .unwrap()
+            .unwrap()
+            .into();
+        
+        user.password = Set(password_hash);
+        let _ = user.update(&state.conn).await.unwrap();
+        Ok(())
     } else {
-        Ok(Err("Usuário não está conectado na sessão.".to_owned()))
+        Err(ServerFnError::new("Nenhum usuário está conectado nessa sessão."))
+    }
+}
+
+#[server(EditJob, "/api")]
+pub async fn edit_job(job_values: JobModel) -> Result<JobModel, ServerFnError> {
+    use actix_web::web;
+    use actix_identity::Identity;
+    use crate::AppState;
+
+    use sea_orm::{Set, ActiveModelTrait};
+
+    use entities::job;
+    use entities::prelude::Job;
+
+    let state = extract::<web::Data<AppState>>().await.unwrap();
+    let identity = extract::<Option<Identity>>().await.unwrap();
+    if let Some(user) = identity {
+        if user_have_permission(user.id().unwrap().parse::<i32>().unwrap(), "EditarVagas".to_owned()).await.unwrap() {
+            let mut job: job::ActiveModel = 
+                Job::find()
+                .filter(
+                    job::Column::Id.eq(
+                        job_values.id
+                    )
+                )
+                .one(&state.conn)
+                .await
+                .unwrap()
+                .unwrap()
+                .into();
+            
+            job.position = Set(job_values.position);
+            job.company = Set(job_values.company);
+            job.description = Set(job_values.description);
+            job.requirements = Set(job_values.requirements);
+            job.updated_at = Set(Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone")));
+            let job = job.update(&state.conn).await.unwrap();
+            return Ok(job.into())
+        }
+        
+        return Err(ServerFnError::new("Usuário não tem permissão de acesso."))
     }
 
+    Err(ServerFnError::new("Usuário não está conectado na sessão."))
+}
+
+#[server(DeleteJob, "/api")]
+pub async fn delete_job(id: i32) -> Result<(), ServerFnError> {
+    use actix_web::web;
+    use actix_identity::Identity;
+    use crate::AppState;
+
+    use sea_orm::{Set, ActiveModelTrait};
+
+    use entities::prelude::Job;
+    use entities::job;
+
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
+    let identity = extract::<Option<Identity>>().await.unwrap();
+    if let Some(user) = identity {
+        if user_have_permission(user.id().unwrap().parse::<i32>().unwrap(), "EditarVagas".to_owned()).await.unwrap() {
+            let deleted_job = Job::find().filter(job::Column::Id.eq(id)).one(&app_state.conn).await.unwrap().unwrap();
+            let deleted_job = deleted_job.delete(&app_state.conn).await.unwrap_throw();
+            return Ok(())
+        }
+        
+        return Err(ServerFnError::new("Usuário não tem permissão de acesso."))
+    }
+
+    Err(ServerFnError::new("Usuário não está conectado na sessão."))
 }
 
 #[server(AddJob, "/api")]
-pub async fn add_job(new_job: JobModel) -> Result<Result<JobModel, String>, ServerFnError> {
+pub async fn add_job(new_job: JobModel) -> Result<JobModel, ServerFnError> {
     use actix_web::web;
     use actix_identity::Identity;
     use crate::AppState;
@@ -492,8 +843,8 @@ pub async fn add_job(new_job: JobModel) -> Result<Result<JobModel, String>, Serv
 
     use entities::job;
 
-    let app_state = extract!(web::Data<AppState>);
-    let identity = extract!(Option<Identity>);;
+    let app_state = extract::<web::Data<AppState>>().await.unwrap();
+    let identity = extract::<Option<Identity>>().await.unwrap();
     if let Some(user) = identity {
         if user_have_permission(user.id().unwrap().parse::<i32>().unwrap(), "EditarVagas".to_owned()).await.unwrap() {
             let new_job = job::ActiveModel {
@@ -502,14 +853,15 @@ pub async fn add_job(new_job: JobModel) -> Result<Result<JobModel, String>, Serv
                 description: Set(new_job.description),
                 requirements: Set(new_job.requirements),
                 published_at: Set(Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone"))),
+                updated_at: Set(Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone"))),
                 ..Default::default()
             };
             let new_job = JobModel::from(new_job.insert(&app_state.conn).await.unwrap_throw());
-            return Ok(Ok(new_job))
+            return Ok(new_job)
         }
         
-        return Ok(Err("Usuário não tem permissão de acesso.".to_owned()))
+        return Err(ServerFnError::new("Usuário não tem permissão de acesso."))
     }
 
-    Ok(Err("Usuário não está conectado na sessão.".to_owned()))
+    Err(ServerFnError::new("Usuário não está conectado na sessão."))
 }

@@ -2,12 +2,13 @@ use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 
-use crate::functions::is_user_logged_in;
+use crate::functions::{is_user_logged_in, UserModel};
 // Handler Pages
 use crate::pages::handlers::{
     NotFound,
     Register,
-    Login
+    Login,
+    MailConfirmation
 };
 
 // Global Components
@@ -20,7 +21,12 @@ use crate::components::{
 use crate::pages::{
     HomePage,
     JobsPage,
-    Profile
+    JobInfo,
+    Profile,
+    editors::{
+        JobsEditor,
+        UsersEditor
+    }
 };
 
 #[derive(Copy, Clone)]
@@ -48,8 +54,6 @@ pub fn App() -> impl IntoView {
     let formatter = |text| format!("{text} — Vagas em Araxá");
 
     view! {
-        // injects a stylesheet into the document <head>
-        // id=leptos means cargo-leptos will hot-reload this stylesheet
         <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
 
         // sets the document title
@@ -59,47 +63,100 @@ pub fn App() -> impl IntoView {
             <Navbar is_logged/>
             <div>
                 <Routes>
-                    <Route path="/" view=move || {
-                        view! {
-                            <NavbarUpdater/>
-                            <HomePage/>
-                        }}/>
-                    <Route path="/vagas" view=move || {
-                        view! {
-                            <NavbarUpdater/>
-                            <Redirect path="/vagas/1"/>
+                    <Route
+                        path="/"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <HomePage/>
+                            }
                         }
-                    }/>
-                    <Route path="/vagas/:page_id" view=move || {
-                        view! {
-                            <NavbarUpdater/>
-                            <JobsPage/>
-                        }}/>
-                    <Route path="/login" view=move || {
-                        view! {
-                            <NavbarUpdater/>
-                            <Login/>
-                        }}/>
-                    <Route path="/cadastrar" view=move || {
-                        view! {
-                            <NavbarUpdater/>
-                            <Register/>
-                        }}/>
-                    <Route path="/meu-perfil" view=move || {
-                        view! {
-                            <NavbarUpdater/>
-                            <Profile/>
-                        }}/>
-                    <Route path="/*any" view=move || {
-                        view! {
-                            <NavbarUpdater/>
-                            <NotFound/>
-                        }}/>
+                    />
+                    <Route
+                        path="/vagas"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <JobsPage/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/vagas/informacoes"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <JobInfo/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/editor/vagas/criar"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <JobsEditor/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/editor/vagas/:id"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <JobsEditor/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/login"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <Login/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/cadastrar"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <Register/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/perfil"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <Profile/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/perfil/confirmar-email"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <MailConfirmation/>
+                            }
+                        }
+                    />
+                    <Route
+                        path="/*any"
+                        view=move || {
+                            view! {
+                                <NavbarUpdater/>
+                                <NotFound/>
+                            }
+                        }
+                    />
                 </Routes>
             </div>
-                <Footer/>
+            <Footer/>
         </Router>
-        
     }
 }
 

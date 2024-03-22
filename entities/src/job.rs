@@ -9,9 +9,11 @@ pub struct Model {
     pub id: i32,
     pub position: String,
     pub company: String,
+    #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
-    pub requirements: String,
+    pub requirements: Vec<String>,
     pub published_at: DateTimeWithTimeZone,
+    pub updated_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

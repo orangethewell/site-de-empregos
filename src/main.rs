@@ -21,6 +21,9 @@ async fn main() -> std::io::Result<()> {
 
     use actix_identity::IdentityMiddleware;
     use actix_session::{storage::RedisSessionStore, SessionMiddleware};
+    use lettre::{transport::smtp::authentication::Credentials, Tokio1Executor};
+    use lettre::{AsyncSmtpTransport, AsyncTransport};
+    use handlebars::Handlebars;
 
     use leptos_actix::{generate_route_list, LeptosRoutes};
 
@@ -41,9 +44,20 @@ async fn main() -> std::io::Result<()> {
     // Create database access
     let conn = Database::connect(env::var("DATABASE_URL").unwrap()).await.unwrap();
     Migrator::up(&conn, None).await.expect("Migrations failed");
-    let secret_key = env::var("SECRET_KEY").unwrap();    
+    let secret_key = env::var("SECRET_KEY").unwrap(); 
+    let credentials = Credentials::new(env::var("SMTP_MAIL").unwrap(), env::var("SMTP_PASSWORD").unwrap());
+    let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay("mail.vagasemaraxa.com.br")
+        .unwrap()
+        .port(587)
+        .credentials(credentials)
+        .build();
 
-    let state = AppState { conn, secret_key };
+    let mut template_engine = Handlebars::new();
+    template_engine.register_template_file("base", "templates/layouts/base.hbs").expect("Houve um problema com o registro do template \"base.hbs\".");
+    template_engine.register_template_file("styles", "templates/layouts/styles.hbs").expect("Houve um problema com o registro do template \"styles.hbs\".");
+    template_engine.register_template_file("tpl-confirm_mail", "templates/verification_code.hbs").expect("Houve um problema com o registro do template \"verfication_code.hbs\".");
+
+    let state = AppState { conn, secret_key, mailer, template_engine };
 
     // Session service for identity
     let session_key = cookie::Key::generate();
