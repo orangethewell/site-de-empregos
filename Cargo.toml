@@ -14,14 +14,13 @@ actix-files = { version = "0.6", optional = true }
 actix-web = { version = "4", optional = true, features = ["macros"] }
 console_error_panic_hook = "0.1"
 http = { version = "1.0.0", optional = true }
-leptos = { version = "0.6", git = "https://github.com/leptos-rs/leptos.git", branch = "nested-suspense-fix", features = ["serde", "nightly"] }
-leptos_meta = { version = "0.6", git = "https://github.com/leptos-rs/leptos.git", branch = "nested-suspense-fix", features = ["nightly"] }
-leptos_actix = { version = "0.6", git = "https://github.com/leptos-rs/leptos.git", branch = "nested-suspense-fix", optional = true }
-leptos_router = { version = "0.6", git = "https://github.com/leptos-rs/leptos.git", branch = "nested-suspense-fix", features = ["nightly"] }
+leptos = { version = "0.6.15", features = ["serde", "nightly"] }
+leptos_meta = { version = "0.6.15", features = ["nightly"] }
+leptos_actix = { version = "0.6.15", optional = true }
+leptos_router = { version = "0.6.15", features = ["nightly"] }
 serde = { version = "1.0.195" }
-wasm-bindgen = "=0.2.89"
+wasm-bindgen = "=0.2.129"
 dotenv = { version = "0.15.0", optional = true }
-pyo3 = { version = "0.20.2", optional = true }
 
 # Visuals
 leptos_icons = { path = "leptos-icons" }
@@ -30,15 +29,20 @@ handlebars = {version = "5.1.0", optional = true }
 
 # User identity management
 actix-identity = { version = "0.7.0", optional = true }
-actix-session = { version = "0.9.0", features = ["redis-rs-session"], optional = true }
+actix-session = { version = "0.9.0", features = ["cookie-session"], optional = true }
 password-hash = { version = "0.5.0", optional = true }
 argon2 = { version = "0.5.3", optional = true }
-lettre = { version = "0.11.4", features = ["tokio1", "tokio1-native-tls"], optional = true }
+lettre = { version = "0.11.4", default-features = false, features = [
+  "smtp-transport",
+  "pool",
+  "builder",
+  "tokio1-rustls-tls",
+], optional = true }
 rand = { version = "0.8.5", optional = true }
 
 # Database Management
 sea-orm = { version = "0.12.12", features = [
-  "sqlx-postgres",
+  "sqlx-sqlite",
   "runtime-tokio-rustls",
 ], optional = true }
 chrono = { version = "0.4.33", features = [
@@ -64,7 +68,6 @@ ssr = [
   "dep:entities",
   "dep:migration",
   "dep:dotenv",
-  "dep:pyo3",
   "dep:lettre",
   "dep:rand",
   "dep:handlebars",

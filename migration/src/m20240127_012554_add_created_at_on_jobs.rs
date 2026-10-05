@@ -14,17 +14,27 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Job::Table)
-                    .add_column(ColumnDef::new(Alias::new("published_at"))
-                        .timestamp_with_time_zone()
-                        .not_null()
-                        .default(Expr::current_timestamp())
+                    .add_column(
+                        ColumnDef::new(Alias::new("published_at"))
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
                     )
-                    .add_column(ColumnDef::new(Alias::new("updated_at"))
-                        .timestamp_with_time_zone()
-                        .not_null()
-                        .default(Expr::current_timestamp())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .alter_table(
+                Table::alter()
+                    .table(Job::Table)
+                    .add_column(
+                        ColumnDef::new(Alias::new("updated_at"))
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
                     )
-                    .to_owned()
+                    .to_owned(),
             )
             .await
     }

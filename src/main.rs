@@ -9,6 +9,7 @@ async fn main() -> std::io::Result<()> {
 
     use dotenv::dotenv;
     use std::env;
+    use std::io::{Error, ErrorKind};
 
     use argon2::{
         password_hash::{
@@ -20,7 +21,7 @@ async fn main() -> std::io::Result<()> {
     };
 
     use actix_identity::IdentityMiddleware;
-    use actix_session::{storage::RedisSessionStore, SessionMiddleware};
+    use actix_session::{storage::CookieSessionStore, SessionMiddleware};
     use lettre::{transport::smtp::authentication::Credentials, Tokio1Executor};
     use lettre::{AsyncSmtpTransport, AsyncTransport};
     use handlebars::Handlebars;
@@ -35,19 +36,58 @@ async fn main() -> std::io::Result<()> {
 
     dotenv().ok();
 
-    let conf = get_configuration(None).await.unwrap();
+    let conf = get_configuration(None)
+        .await
+        .map_err(|error| Error::new(ErrorKind::InvalidInput, format!("Não foi possível carregar a configuração: {error}")))?;
     let addr = conf.leptos_options.site_addr;
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
-    println!("listening on http://{}", &addr);
+    println!("iniciando servidor em http://{}", &addr);
 
     // Create database access
-    let conn = Database::connect(env::var("DATABASE_URL").unwrap()).await.unwrap();
-    Migrator::up(&conn, None).await.expect("Migrations failed");
-    let secret_key = env::var("SECRET_KEY").unwrap(); 
-    let credentials = Credentials::new(env::var("SMTP_MAIL").unwrap(), env::var("SMTP_PASSWORD").unwrap());
+    let database_url = env::var("DATABASE_URL").map_err(|_| {
+        Error::new(
+            ErrorKind::InvalidInput,
+            "DATABASE_URL não está definido. Configure a URL do SQLite no arquivo .env.",
+        )
+    })?;
+    let conn = Database::connect(&database_url).await.map_err(|error| {
+        Error::new(
+            ErrorKind::ConnectionRefused,
+            format!(
+                "Não foi possível conectar ao SQLite configurado em DATABASE_URL. \
+                 Verifique se o caminho do arquivo SQLite está correto e se o processo tem permissão de escrita. \
+                 Detalhe: {error}"
+            ),
+        )
+    })?;
+    Migrator::up(&conn, None).await.map_err(|error| {
+        Error::new(
+            ErrorKind::Other,
+            format!("Falha ao executar as migrations do banco: {error}"),
+        )
+    })?;
+    let secret_key = env::var("SECRET_KEY").map_err(|_| {
+        Error::new(
+            ErrorKind::InvalidInput,
+            "SECRET_KEY não está definido. Configure-o no arquivo .env.",
+        )
+    })?;
+    let smtp_mail = env::var("SMTP_MAIL").map_err(|_| {
+        Error::new(
+            ErrorKind::InvalidInput,
+            "SMTP_MAIL não está definido. Configure-o no arquivo .env.",
+        )
+    })?;
+    let smtp_password = env::var("SMTP_PASSWORD").map_err(|_| {
+        Error::new(
+            ErrorKind::InvalidInput,
+            "SMTP_PASSWORD não está definido. Configure-o no arquivo .env.",
+        )
+    })?;
+    let credentials = Credentials::new(smtp_mail, smtp_password);
     let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay("mail.vagasemaraxa.com.br")
-        .unwrap()
+        .map_err(|error| Error::new(ErrorKind::InvalidInput, format!("Configuração SMTP inválida: {error}")))?
         .port(587)
         .credentials(credentials)
         .build();
@@ -61,10 +101,6 @@ async fn main() -> std::io::Result<()> {
 
     // Session service for identity
     let session_key = cookie::Key::generate();
-
-    let redis_store = RedisSessionStore::new("redis://127.0.0.1:6379")
-        .await
-        .unwrap();
 
     // if not user, add it:
 
@@ -129,7 +165,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(IdentityMiddleware::default())
             .wrap(SessionMiddleware::new(
-                redis_store.clone(),
+                CookieSessionStore::default(),
                 session_key.clone()
             ))
             .route("/api/{tail:.*}", leptos_actix::handle_server_fns())

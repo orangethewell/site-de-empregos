@@ -8,9 +8,6 @@ use lettre::AsyncTransport;
 use sea_orm::*;
 
 #[cfg(feature = "ssr")]
-pub mod embed;
-
-#[cfg(feature = "ssr")]
 use entities;
 
 use serde::{Deserialize, Serialize};
@@ -141,17 +138,11 @@ impl From<entities::job::Model> for JobModel {
             position: value.position,
             company: value.company,
             description: value.description,
-            requirements: value.requirements,
+            requirements: serde_json::from_value(value.requirements).unwrap_or_default(),
             published_at: value.published_at,
             updated_at: value.updated_at
         }
     }
-}
-
-#[server(GeneratePaymentUrl, "/api")]
-pub async fn generate_payment_url() -> Result<String, ServerFnError> {
-    use embed::generate_payment_url;
-    Ok(generate_payment_url())
 }
 
 #[server(UserHavePermission, "/api")]
@@ -795,7 +786,7 @@ pub async fn edit_job(job_values: JobModel) -> Result<JobModel, ServerFnError> {
             job.position = Set(job_values.position);
             job.company = Set(job_values.company);
             job.description = Set(job_values.description);
-            job.requirements = Set(job_values.requirements);
+            job.requirements = Set(serde_json::to_value(job_values.requirements).unwrap_or_else(|_| serde_json::json!([])));
             job.updated_at = Set(Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone")));
             let job = job.update(&state.conn).await.unwrap();
             return Ok(job.into())
@@ -851,7 +842,7 @@ pub async fn add_job(new_job: JobModel) -> Result<JobModel, ServerFnError> {
                 position: Set(new_job.position),
                 company: Set(new_job.company),
                 description: Set(new_job.description),
-                requirements: Set(new_job.requirements),
+                requirements: Set(serde_json::to_value(new_job.requirements).unwrap_or_else(|_| serde_json::json!([]))),
                 published_at: Set(Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone"))),
                 updated_at: Set(Utc::now().with_timezone(&FixedOffset::west_opt(3 * 3600).expect("Invalid Timezone"))),
                 ..Default::default()
