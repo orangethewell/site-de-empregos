@@ -1,8 +1,4 @@
-use gloo::console::log;
 use yew::prelude::*;
-use yew_icons::{Icon, IconId};
-use yew_router::prelude::*;
-use crate::app::Route;
 
 #[derive(Properties, PartialEq)]
 pub struct FloatWindowProps {

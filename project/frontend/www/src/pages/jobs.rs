@@ -1,5 +1,4 @@
 use common::{Job, get_jobs};
-use gloo::console::log;
 use yew::{prelude::*, platform::spawn_local};
 use crate::components::JobList;
 
@@ -88,4 +87,3 @@ pub fn jobs() -> Html {
         </main>
     }
 }
-

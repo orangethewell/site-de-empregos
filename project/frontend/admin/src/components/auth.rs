@@ -72,7 +72,7 @@ pub fn auth_guard(props: &AuthGuardProps) -> Html {
             spawn_local(async move {
                 match user_have_permission(name.to_string()).await {
                     Ok(condition) => access_granted.set(if condition {"yes".to_owned()} else {"no".to_owned()}),
-                    Err(err) => navigator.push(&Route::Login)
+                    Err(_err) => navigator.push(&Route::Login)
                 }
             })
         })

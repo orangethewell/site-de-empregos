@@ -1,67 +1,43 @@
 from flask import Blueprint, Flask
-from flask_cors import CORS
-import redis
 import os
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-only-change-me')
     
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI')\
         or 'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
 
-    SESSION_TYPE="redis"
-    SESSION_PERMANENT = False
-    SESSION_USE_SIGNER = True
-    SESSION_REDIS = redis.from_url("redis://127.0.0.1:6379")
-    SESSION_COOKIE_SAMESITE = 'None'
-
-    CACHE_TYPE = "RedisCache"
-    CACHE_DEFAULT_TIMEOUT = 300
-    CACHE_REDIS_URL = "redis://127.0.0.1:6379"
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
 
 class ProductionConfig(Config):
-    SERVER_NAME = "vagasemaraxa.com.br"
     SESSION_COOKIE_SECURE = True
 
 class DevelopmentConfig(Config):
-    SERVER_NAME = "vagasemaraxa.com:80"
-    DEBUG=True
-
-    SESSION_COOKIE_HTTPONLY = True
+    DEBUG = True
     SESSION_COOKIE_SECURE = False
 
-from .extensions import db, bcrypt, server_session, migrate, cache
+from .extensions import db, bcrypt
 from .models.permissions import checkin_permission
 from .models.roles import checkin_role
 from .models.users import checkin_admin_user
 
-def create_app(config_class=ProductionConfig()):
-    app = Flask(__name__, subdomain_matching=True)
-    CORS(app, 
-        expose_headers=["Content-Type", "Access-Control-Allow-Credentials"],
-        supports_credentials=True
-    )
-    if app.debug:
-        app.config.from_object(DevelopmentConfig())
-    else:
-        app.config.from_object(config_class)
-    print(app.config["SERVER_NAME"])
-    app.url_map.default_subdomain = "www"
+def create_app(config_class=None):
+    app = Flask(__name__)
+    if config_class is None:
+        config_class = (ProductionConfig
+                        if os.environ.get('APP_ENV') == 'production'
+                        else DevelopmentConfig)
+    app.config.from_object(config_class)
 
     # Initialize Flask extensions here
     db.init_app(app)
     
-    migrate.init_app(app)
-
     bcrypt.init_app(app)
-
-    server_session.init_app(app)
-
-    cache.init_app(app)
 
     # Register blueprints here
     from .admin import bp as admin_bp
@@ -88,7 +64,7 @@ def create_app(config_class=ProductionConfig()):
 
     # Main Blueprint
 
-    bp = Blueprint('main', __name__, url_prefix="/", subdomain="www", static_url_path="/", static_folder="../../dist")
+    bp = Blueprint('main', __name__, url_prefix="/", static_url_path="/", static_folder="../dist")
 
     @bp.errorhandler(404)
     @bp.route('/', defaults={'path': ''})

@@ -2,9 +2,8 @@ use bounce::use_atom;
 use web_sys::HtmlInputElement;
 use yew::{prelude::*, platform::spawn_local};
 use yew_icons::{Icon, IconId};
-use yew_notifications::use_notification;
 use common::{Job, get_jobs, add_job, update_job, delete_job};
-use crate::{components::{FloatWindow, TextInput, form_input::InputStatus, notifications::CustomNotification, menu::ShowMenu, AuthGuard, AuthFallback, AuthProtected}, app::Route};
+use crate::{components::{FloatWindow, TextInput, form_input::InputStatus, notifications::{new_notifier, CustomNotification}, menu::ShowMenu, AuthGuard, AuthProtected}};
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct JobTableProps {
@@ -137,7 +136,7 @@ pub fn job_editor(props: &JobEditorProps) -> Html {
     let requirements = use_state(|| job.requirements.clone());
     let activities = use_state(|| job.activities.clone());
     
-    let notifier = use_notification::<CustomNotification>();
+    let notifier = new_notifier::<CustomNotification>();
     
     let oncomplete = props.oncomplete.clone();
     let show_advice = use_state(|| false);
@@ -389,7 +388,7 @@ pub fn job_editor(props: &JobEditorProps) -> Html {
 
     html! {
         <>
-            <h1 class="text-center text-2xl font-bold">{title.clone()}</h1>
+            <h1 class="text-center text-2xl font-bold">{title}</h1>
             <form onsubmit={Callback::from(|e: SubmitEvent| e.prevent_default())}>
                 <div class="flex p-3 rounded-lg">
                     <p class="flex-grow"><b>{"Oportunidades: "}</b>{*num_of_opportunities}</p>
@@ -422,7 +421,7 @@ pub fn jobs() -> Html {
     let should_update = use_state(|| false);
     let jobs: UseStateHandle<Vec<Job>> = use_state(|| vec![]);
 
-    let notifier = use_notification::<CustomNotification>();
+    let notifier = new_notifier::<CustomNotification>();
     
     let is_menu_enabled = use_atom::<ShowMenu>();
     is_menu_enabled.set(ShowMenu {value: true});

@@ -1,9 +1,8 @@
 from . import bp
 from flask import jsonify, request, session
-from ...extensions import db, bcrypt, cache
+from ...extensions import db, bcrypt
 from ...models.users import User, user_have_permission
 
-@cache.cached(timeout=300)
 @bp.route("/have-permission/<permission>", methods=["GET"])
 def have_permission(permission):
     user_id = session.get("user_id")
@@ -64,7 +63,6 @@ def login():
         "email": user.email
     })
 
-@cache.cached(timeout=300)
 @bp.route("/me", methods=['GET'])
 def me():
     user_id = session.get("user_id")
@@ -84,5 +82,5 @@ def me():
 
 @bp.route("/logout", methods=['POST'])
 def logout():
-    session.pop("user_id")
+    session.pop("user_id", None)
     return "", 200

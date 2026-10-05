@@ -1,11 +1,9 @@
 use bounce::{Atom, use_atom};
-use common::{login_user, user_have_permission};
-use gloo::console::log;
+use common::login_user;
 use yew::{prelude::*, platform::spawn_local};
 use web_sys::HtmlInputElement;
-use yew_notifications::use_notification;
 use yew_router::prelude::use_navigator;
-use crate::{components::{SubmitButton, TextInput, InputStatus, menu::ShowMenu, notifications::CustomNotification}, app::Route};
+use crate::{components::{SubmitButton, TextInput, InputStatus, menu::ShowMenu, notifications::{new_notifier, CustomNotification}}, app::Route};
 
 #[derive(Atom, PartialEq, Default)]
 pub struct LoggedUser {
@@ -28,7 +26,7 @@ pub fn login() -> Html {
     let password_status = use_state(|| InputStatus::Neutral);
 
     let navigator = use_navigator().unwrap();
-    let notifier = use_notification::<CustomNotification>();
+    let notifier = new_notifier::<CustomNotification>();
     let is_menu_enabled = use_atom::<ShowMenu>();
     is_menu_enabled.set(ShowMenu {value: false});
 
@@ -83,7 +81,7 @@ pub fn login() -> Html {
         <>
             <div class="flex justify-center items-center h-screen">
                 <form {onsubmit}>
-                    <div class="flex justify-center w-full"><img class="h-40 w-auto" src="admin/assets/logo_black.png"/></div>
+                    <div class="flex justify-center w-full"><img class="h-40 w-auto" src="/admin/assets/logo_black.png"/></div>
                     <TextInput id="emailInput" status={(*email_status).clone()} type_handler="text" input_ref={email_ref}>{"Endereço de E-mail"}</TextInput>
                     <TextInput id="passwordInput" status={(*password_status).clone()} type_handler="password" input_ref={password_ref}>{"Senha"}</TextInput>
                 

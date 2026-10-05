@@ -1,4 +1,5 @@
 .env
+project/.venv/
 project/dist/
 project/keyring_server.txt
 project/frontend/target

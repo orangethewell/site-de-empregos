@@ -2,39 +2,28 @@ services:
   web:
     profiles:
       - prod
-    build: .
+    build:
+      context: .
+      dockerfile: dockerfile
     ports:
       - "8000:5000"
 
     environment:
-      SECRET_KEY: /run/secrets/keyring_server
+      APP_ENV: production
+      SECRET_KEY: ${SECRET_KEY:-change-me}
 
     command: gunicorn -w 2 -b 0.0.0.0:5000 'app:create_app()'
-    secrets:
-      - keyring_server
-
-  redis:
-    profiles:
-      - prod
-      - dev
-    image: "redis:alpine"
 
   localweb:
     profiles:
       - dev
-    build: .
-    command: flask run --debug
+    build:
+      context: .
+      dockerfile: dockerfile
+    command: flask --app app run --debug
     ports:
       - "80:5000"
 
     environment:
-      SECRET_KEY: /run/secrets/keyring_server
-
-    
-    secrets:
-      - keyring_server
-    
-
-secrets:
-  keyring_server:
-    file: keyring_server.txt
+      APP_ENV: development
+      SECRET_KEY: ${SECRET_KEY:-dev-only-change-me}

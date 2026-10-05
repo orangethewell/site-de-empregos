@@ -1,6 +1,5 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
-use yew_icons::{Icon, IconId};
 use crate::app::Route;
 
 #[derive(PartialEq, Properties)]

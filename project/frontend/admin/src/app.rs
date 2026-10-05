@@ -1,18 +1,13 @@
-use std::collections::HashMap;
-
 use common::get_user_info;
 use gloo::console::log;
 use yew::platform::spawn_local;
 use yew::prelude::*;
-use yew_router::{prelude::*, navigator};
-use yew_notifications::{NotificationsProvider, NotificationsPosition};
+use yew_router::prelude::*;
 use bounce::{BounceRoot, use_atom};
 use crate::components::menu::ShowMenu;
 use crate::components::{SidebarMenu, AuthGuard, AuthProtected, AuthFallback};
 use crate::pages::*;
 
-use crate::components::notifications::factory::CustomNotificationFactory;
-use crate::components::notifications::CustomNotification;
 use crate::pages::login::LoggedUser;
 
 #[derive(Clone, Routable, PartialEq, Debug, serde::Serialize)]
@@ -116,7 +111,7 @@ pub fn restrict() -> Html {
                 <p class="text-xl mb-8 p-4 text-center border-[3px] border-gray-200">{"Parece que você entrou em um site restrito a usuários privilegiados,
                 e você não tem o privilégio de acesso. Se acha que isso é um engano,
                 converse com um usuário administrador para resolver esse problema."}</p>
-                <a class="text-gray-400 hover:underline flex justify-center" href="http://www.vagasemaraxa.com:5000/">{"voltar ao site principal"}</a>
+                <a class="text-gray-400 hover:underline flex justify-center" href="/">{"voltar ao site principal"}</a>
             </div>
         </div>
         
@@ -157,17 +152,12 @@ pub fn admin_panel() -> Html {
 
 #[function_component(App)]
 pub fn app() -> Html {
-    let component_creator = CustomNotificationFactory::default();
-    let position = NotificationsPosition::Custom("fixed z-50 space-y-4 right-8 bottom-8".into());
-
     html! {
         <BounceRoot>
-        <BrowserRouter>
-            <NotificationsProvider<CustomNotification, CustomNotificationFactory> {component_creator} {position}>
-                <AdminPanel/>  
-            </NotificationsProvider<CustomNotification, CustomNotificationFactory>>
+        <HashRouter>
+            <AdminPanel/>
             <script src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/tw-elements.umd.min.js"></script>
-        </BrowserRouter>
+        </HashRouter>
         </BounceRoot>
     }
 }

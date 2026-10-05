@@ -25,10 +25,9 @@ def checkin_role(name, description, permissions):
 
     if not role:
         new_role = Role(title=name, description=description)
+        db.session.add(new_role)
         for permission in permissions:
             permission = Permission.query.filter_by(title=permission).first()
             if permission: new_role.permissions.append(permission)
-
-        db.session.add(new_role)
 
     db.session.commit()

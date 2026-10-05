@@ -1,10 +1,7 @@
 use serde::{Deserialize, Serialize};
-use reqwasm::http::{Request, RequestCredentials, Method};
+use reqwasm::http::{Request, RequestCredentials};
 use serde_wasm_bindgen::to_value;
 use serde_json::to_string as jsonify;
-use wasm_bindgen::JsValue;
-use gloo::{utils::window, console::log};
-use web_sys::Url;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Job {
@@ -18,20 +15,7 @@ pub struct Job {
 }
 
 pub fn get_api_url(path_bind: &str) -> String {
-    let url = Url::new(&window().location().href().unwrap()).unwrap();
-    let protocol = url.protocol();
-    let host = url.host();
-    let domains: Vec<&str> = host.split(".").collect();
-
-    log!(&format!("domínios: {:#?}", domains));
-
-    let domain = if domains[0] == "vagasemaraxa" {
-        domains[0..].join(".")
-    } else {
-        domains[1..].join(".")
-    };
-
-    format!("{}//www.{}/api/{}", protocol, domain, path_bind)
+    format!("/api/{}", path_bind)
 }
 
 pub async fn add_job(new_job: &Job) -> Result<(), String> {
